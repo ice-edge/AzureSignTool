@@ -7,16 +7,13 @@ pipeline {
     tools {
         msbuild 'vs2022'
     }
-    environment {
-        CERT_SERIAL=credentials('ev-cert-serial')
-    }
     stages {
         stage('Build') {
             steps {
                 bat "\"${tool 'vs2022'}\" -t:restore -restore AzureSignTool.sln"
                 lock(resource: 'digicert') {
                     bat "\"${tool 'vs2022'}\" -t:Package build/build.proj " +
-                            "\"-p:CertSerial=${env.CERT_SERIAL},SigntoolPath=${tool 'signtool'}\""
+                            "\"-p:SigntoolPath=${tool 'signtool'}\""
                 }
             }
             post {

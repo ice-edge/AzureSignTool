@@ -2,16 +2,19 @@
 <Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 	<PropertyGroup>
 		<ProductName>AzureSignTool</ProductName>
-		<ProductUrl>https://vcsjones.com/azuresigntool</ProductUrl>
-		<ProductCompanyName>Kevin Jones</ProductCompanyName>
+		<ProductUrl>https://github.com/ice-edge/azuresigntool</ProductUrl>
+		<ProductCompanyName>Ice Edge Business Solutions</ProductCompanyName>
 	</PropertyGroup>
 	<PropertyGroup>
 		<OutputDir>$(MSBuildThisFileDirectory)..\out\</OutputDir>
 		<OutZip>$(OutputDir)AzureSignTool.zip</OutZip>
 	</PropertyGroup>
+	<PropertyGroup>
+        <CertSerial>f6672884bad63d294eacaebec3c2a619e7b72b68</CertSerial>
+	</PropertyGroup>
 	<Target Name="Build" DependsOnTargets="Clean">
 		<ItemGroup>
-			<AzureSignToolSolution Include="$(MSBuildThisFileDirectory)..\AzureSignTool\AzureSignTool.csproj">
+			<AzureSignToolSolution Include="$(MSBuildThisFileDirectory)..\src\AzureSignTool\AzureSignTool.csproj">
 				<Properties>OutputPath=$(OutputDir);Configuration=Release</Properties>
 			</AzureSignToolSolution>
 		</ItemGroup>
@@ -20,8 +23,8 @@
 		</MSBuild>
 	</Target>
 	<Target Name="Sign" DependsOnTargets="Build">
-		<Exec Command="signtool.exe sign /sha1 f6672884bad63d294eacaebec3c2a619e7b72b68 /nosealwarn /d &quot;$(ProductName)&quot; /du $(ProductUrl) /n &quot;$(ProductCompanyName)&quot; /itos /ph /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 &quot;$(OutputDir)\AzureSignTool.exe&quot;" />
-		<Exec Command="signtool.exe sign /sha1 f6672884bad63d294eacaebec3c2a619e7b72b68 /seal /tseal http://timestamp.digicert.com /td SHA256 &quot;$(OutputDir)\AzureSignTool.exe&quot;" />
+		<Exec Command="signtool.exe sign /sha1 $(CertSerial) /nosealwarn /d &quot;$(ProductName)&quot; /du $(ProductUrl) /n &quot;$(ProductCompanyName)&quot; /itos /ph /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 &quot;$(OutputDir)\AzureSignTool.exe&quot;" />
+		<Exec Command="signtool.exe sign /sha1 $(CertSerial) /seal /tseal http://timestamp.digicert.com /td SHA256 &quot;$(OutputDir)\AzureSignTool.exe&quot;" />
 	</Target>
     <Target Name="Package" DependsOnTargets="Sign">
         <Zip InputDirectory="$(OutputDir)" OutputFile="$(OutZip)" />

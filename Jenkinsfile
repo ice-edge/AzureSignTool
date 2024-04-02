@@ -15,10 +15,10 @@ pipeline {
             steps {
                 bat "\"${tool 'vs2022'}\" -t:Package build/build.csproj -p:CertSerial=${env.CERT_SERIAL}"
             }
-        }
-        post {
-            success {
-                archiveArtifacts artifacts: 'out/AzureSignTool.zip'
+            post {
+                success {
+                    archiveArtifacts artifacts: 'out/AzureSignTool.zip'
+                }
             }
         }
     }

@@ -10,7 +10,7 @@
 		<OutZip>$(OutputDir)AzureSignTool.zip</OutZip>
 	</PropertyGroup>
 	<PropertyGroup>
-        <CertSerial>f6672884bad63d294eacaebec3c2a619e7b72b68</CertSerial>
+        <CertName>DIRTT Environmental Solutions Ltd</CertName>
         <SigntoolPath>signtool.exe</SigntoolPath>
 	</PropertyGroup>
 	<Target Name="Build" DependsOnTargets="Clean">
@@ -24,8 +24,8 @@
 		</MSBuild>
 	</Target>
 	<Target Name="Sign" DependsOnTargets="Build">
-		<Exec Command="&quot;$(SigntoolPath)&quot; sign /sha1 $(CertSerial) /nosealwarn /d &quot;$(ProductName)&quot; /du $(ProductUrl) /n &quot;$(ProductCompanyName)&quot; /itos /ph /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 &quot;$(OutputDir)\AzureSignTool.exe&quot;" />
-		<Exec Command="&quot;$(SigntoolPath)&quot; sign /sha1 $(CertSerial) /seal /tseal http://timestamp.digicert.com /td SHA256 &quot;$(OutputDir)\AzureSignTool.exe&quot;" />
+		<Exec Command="&quot;$(SigntoolPath)&quot; sign /n &quot;$(CertName)&quot; /nosealwarn /d &quot;$(ProductName)&quot; /du $(ProductUrl) /n &quot;$(ProductCompanyName)&quot; /itos /ph /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 &quot;$(OutputDir)\AzureSignTool.exe&quot;" />
+		<Exec Command="&quot;$(SigntoolPath)&quot; sign /n &quot;$(CertName)&quot; /seal /tseal http://timestamp.digicert.com /td SHA256 &quot;$(OutputDir)\AzureSignTool.exe&quot;" />
 	</Target>
     <Target Name="Package" DependsOnTargets="Sign">
         <Zip InputDirectory="$(OutputDir)" OutputFile="$(OutZip)" />

@@ -13,7 +13,11 @@ pipeline {
     stages {
         stage('Build') {
             steps {
-                bat "\"${tool 'vs2022'}\" -t:Package build/build.csproj -p:CertSerial=${env.CERT_SERIAL}"
+                bat "\"${tool 'vs2022'}\" -t:restore -restore AzureSignTool.sln"
+                lock(resource: 'digicert') {
+                    bat "\"${tool 'vs2022'}\" -t:Package build/build.proj " +
+                            "\"-p:CertSerial=${env.CERT_SERIAL},SigntoolPath=${tool 'signtool'}\""
+                }
             }
             post {
                 success {

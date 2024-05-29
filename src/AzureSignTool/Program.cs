@@ -7,12 +7,13 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Core;
+using Azure.Security.KeyVault.Keys.Cryptography;
 using AzureSign.Core;
 using Microsoft.Extensions.FileSystemGlobbing;
 using Microsoft.Extensions.FileSystemGlobbing.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
-using RSAKeyVaultProvider;
 using XenoAtom.CommandLine;
 
 using static AzureSignTool.HRESULT;
@@ -79,7 +80,7 @@ namespace AzureSignTool
         internal bool NoPageHashing { get; set; }
         internal bool ContinueOnError { get; set; }
         internal string? InputFileList { get; set; }
-        internal int? MaxDegreeOfParallelism { get; set; }
+        internal int MaxDegreeOfParallelism { get; set; } = 4;
         internal bool Colors { get; set; }
         internal bool SkipSignedFiles { get; set; }
         internal bool AppendSignature { get; set; }
@@ -248,6 +249,7 @@ namespace AzureSignTool
                 var configurationDiscoverer = new KeyVaultConfigurationDiscoverer(logger);
                 var materializedResult = await configurationDiscoverer.Materialize(configuration);
                 AzureKeyVaultMaterializedConfiguration materialized;
+
                 switch (materializedResult)
                 {
                     case ErrorOr<AzureKeyVaultMaterializedConfiguration>.Ok ok:
@@ -257,6 +259,14 @@ namespace AzureSignTool
                         logger.LogError("Failed to get configuration from Azure Key Vault.");
                         return E_INVALIDARG;
                 }
+
+                const string RsaOid = "1.2.840.113549.1.1.1";
+                if (materialized.PublicCertificate.GetKeyAlgorithm() is string alg and not RsaOid)
+                {
+                    logger.LogError("Certificate algorithm is not RSA.");
+                    return E_INVALIDARG;
+                }
+
                 int failed = 0, succeeded = 0;
                 var cancellationSource = new CancellationTokenSource();
                 Console.CancelKeyPress += (_, e) =>
@@ -266,13 +276,25 @@ namespace AzureSignTool
                     logger.LogInformation("Cancelling signing operations.");
                 };
                 var options = new ParallelOptions();
-                if (MaxDegreeOfParallelism.HasValue)
+                if (MaxDegreeOfParallelism != 0)
                 {
-                    options.MaxDegreeOfParallelism = MaxDegreeOfParallelism.Value;
+                    options.MaxDegreeOfParallelism = MaxDegreeOfParallelism;
                 }
                 logger.LogTrace("Creating context");
 
-                using (var keyVault = RSAFactory.Create(materialized.TokenCredential, materialized.KeyId, materialized.PublicCertificate))
+                CryptographyClientOptions clientOptions = new() {
+                    Retry =
+                    {
+                        Delay = TimeSpan.FromSeconds(2),
+                        MaxDelay = TimeSpan.FromSeconds(16),
+                        MaxRetries = 5,
+                        Mode = RetryMode.Exponential
+                    }
+                };
+
+                var client = new CryptographyClient(materialized.KeyId, materialized.TokenCredential, clientOptions);
+
+                using (var keyVault = await client.CreateRSAAsync())
                 using (var signer = new AuthenticodeKeyVaultSigner(keyVault, materialized.PublicCertificate, ParseHashAlgorithm(FileDigestAlgorithm), timeStampConfiguration, certificates))
                 {
                     Parallel.ForEach(AllFiles, options, () => (succeeded: 0, failed: 0), (filePath, pls, state) =>
@@ -453,9 +475,9 @@ namespace AzureSignTool
             valid &= ValidateHashAlgorithm(context, FileDigestAlgorithm, "--file-digest");
             valid &= ValidateHashAlgorithm(context, TimestampDigestAlgorithm, "--timestamp-digest");
 
-            if (MaxDegreeOfParallelism is < -1 or 0)
+            if (MaxDegreeOfParallelism < -1)
             {
-                context.Error.WriteLine("'--max-degree-of-parallelism' must be a positive interger, or negative one.");
+                context.Error.WriteLine("'--max-degree-of-parallelism' must be a positive interger, zero, or -1.");
                 valid = false;
             }
 
